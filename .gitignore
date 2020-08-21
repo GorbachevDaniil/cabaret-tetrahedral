@@ -1,0 +1,22 @@
+# Compiled files #
+*.dll
+*.exe
+*.o
+*.out
+*.a
+bin/
+build/
+
+# Project files #
+.vscode/
+.history/
+
+# Mesh related files
+*.poly
+*.ele
+*.node
+*.edge
+*.face
+*.neigh
+
+*.ipynb
