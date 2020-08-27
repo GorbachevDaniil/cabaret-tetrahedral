@@ -11,8 +11,8 @@ class AbstractSolver {
     virtual void processPhase3(double tau) = 0;
     virtual void prepareNextStep() = 0;
 
-    virtual void processPhase2BoundEdge(Edge *edge, double tau) = 0;
-    virtual void processPhase2InnerEdge(Edge *edge, double tau) = 0;
+    virtual void processPhase2BoundFace(Face *face, double tau) = 0;
+    virtual void processPhase2InnerFace(Face *face, double tau) = 0;
 };
 
 #endif

@@ -9,26 +9,12 @@
 #include <cmath>
 #include <cassert>
 
-void Mesh::allocateScalars() {
-    s0 = std::vector<std::vector<double>>(nodes.size());
-    s1 = std::vector<std::vector<double>>(nodes.size());
-    s2 = std::vector<std::vector<double>>(nodes.size());
-}
+Eigen::Vector3d calcNewCoords(Eigen::Vector3d baseCoords, 
+                              Eigen::Vector3d corner1Coords,
+                              Eigen::Vector3d corner2Coords) {
+        Eigen::Vector3d newCoords;
 
-void Mesh::allocateVectors() {
-    v0 = std::vector<std::vector<std::vector<double>>>(nodes.size());
-    v1 = std::vector<std::vector<std::vector<double>>>(nodes.size());
-    v2 = std::vector<std::vector<std::vector<double>>>(nodes.size());
-}
-
-std::vector<double> calcNewCoords(std::vector<double> baseCoords, 
-                                  std::vector<double> corner1Coords,
-                                  std::vector<double> corner2Coords) {
-        std::vector<double> newCoords(3, 0);
-
-        newCoords[0] = baseCoords[0] / 2 + corner1Coords[0] / 4 + corner2Coords[0] / 4;
-        newCoords[1] = baseCoords[1] / 2 + corner1Coords[1] / 4 + corner2Coords[1] / 4;
-        newCoords[2] = baseCoords[2] / 2 + corner1Coords[2] / 4 + corner2Coords[2] / 4;
+        newCoords = baseCoords / 2 + corner1Coords / 4 + corner2Coords / 4;
 
         return newCoords;
     }
@@ -41,14 +27,9 @@ void Mesh::createCellCenterNode() {
         Node *node3 = &nodes[cell->cornerNodeIDs[2]];
         Node *node4 = &nodes[cell->cornerNodeIDs[3]];
 
-        std::vector<double> centerCoords(3, 0);
-
-        centerCoords[0] = (node1->coords[0] + node2->coords[0] + 
-                           node3->coords[0] + node4->coords[0]) / 4;
-        centerCoords[1] = (node1->coords[1] + node2->coords[1] + 
-                           node3->coords[1] + node4->coords[1]) / 4;
-        centerCoords[2] = (node1->coords[2] + node2->coords[2] + 
-                           node3->coords[2] + node4->coords[2]) / 4;
+        Eigen::Vector3d centerCoords;
+        centerCoords = (node1->coords + node2->coords + 
+                        node3->coords + node4->coords) / 4;
         long centerNodeID = getNewNodeID();
         Node *centerNode = new Node(centerNodeID, centerCoords, false, true);
         nodes.push_back(*centerNode);
@@ -63,30 +44,30 @@ void Mesh::createFaceInnerNodes() {
         Node *node2 = &nodes[face->cornerNodeIDs[1]];
         Node *node3 = &nodes[face->cornerNodeIDs[2]];
 
-        std::vector<double> node1Coords = node1->coords;
-        std::vector<double> node2Coords = node2->coords;
-        std::vector<double> node3Coords = node3->coords;
+        Eigen::Vector3d node1Coords = node1->coords;
+        Eigen::Vector3d node2Coords = node2->coords;
+        Eigen::Vector3d node3Coords = node3->coords;
         bool boundNode = node1->boundNode && node2->boundNode && node3->boundNode;
 
-        std::vector<double> innerNode1Coords = calcNewCoords(node1Coords,
-                                                             node2Coords,
-                                                             node3Coords);
+        Eigen::Vector3d innerNode1Coords = calcNewCoords(node1Coords,
+                                                         node2Coords,
+                                                         node3Coords);
         long innerNode1ID = getNewNodeID();
         Node *innerNode1 = new Node(innerNode1ID, innerNode1Coords, boundNode, false);
         nodes.push_back(*innerNode1);
         face->innerNodeIDs.push_back(innerNode1ID);
 
-        std::vector<double> innerNode2Coords = calcNewCoords(node2Coords,
-                                                             node1Coords,
-                                                             node3Coords);
+        Eigen::Vector3d innerNode2Coords = calcNewCoords(node2Coords,
+                                                         node1Coords,
+                                                         node3Coords);
         long innerNode2ID = getNewNodeID();
         Node *innerNode2 = new Node(innerNode2ID, innerNode2Coords, boundNode, false);
         nodes.push_back(*innerNode2);
         face->innerNodeIDs.push_back(innerNode2ID);
 
-        std::vector<double> innerNode3Coords = calcNewCoords(node3Coords,
-                                                             node1Coords,
-                                                             node2Coords);
+        Eigen::Vector3d innerNode3Coords = calcNewCoords(node3Coords,
+                                                         node1Coords,
+                                                         node2Coords);
         long innerNode3ID = getNewNodeID();
         Node *innerNode3 = new Node(innerNode3ID, innerNode3Coords, boundNode, false);
         nodes.push_back(*innerNode3);
@@ -117,16 +98,12 @@ void Mesh::fillNodeNodeRelation() {
     for (unsigned long i = 0; i < cells.size(); i++) {
         Cell *cell = &cells[i];
         Node *node = &nodes[cell->centerNodeID];
-        std::map<long, std::vector<double>> innerNodeIDToVector;
+        std::map<long, Eigen::Vector3d> innerNodeIDToVector;
         for (unsigned long j = 0; j < cell->faceIDs.size(); j++) {
             Face *face = &faces[cell->faceIDs[j]];
             for (unsigned long k = 0; k < face->innerNodeIDs.size(); k++) {
                 Node *innerNode = &nodes[face->innerNodeIDs[k]];
-                std::vector<double> vector(3, 0);
-                vector[0] = node->coords[0] - innerNode->coords[0];
-                vector[1] = node->coords[1] - innerNode->coords[1];
-                vector[2] = node->coords[2] - innerNode->coords[2];
-                innerNodeIDToVector[innerNode->ID] = vector;
+                innerNodeIDToVector[innerNode->ID] = node->coords - innerNode->coords;
             }
         }
         for (auto i = innerNodeIDToVector.cbegin(); i != innerNodeIDToVector.cend(); ++i) {
@@ -135,7 +112,7 @@ void Mesh::fillNodeNodeRelation() {
                     continue;
                 }
 
-                std::vector<double> vectorProduct(3, 0);
+                Eigen::Vector3d vectorProduct;
                 vectorProduct[0] = i->second[1] * j->second[2] - i->second[2] * j->second[1];
                 vectorProduct[1] = i->second[2] * j->second[0] - i->second[0] * j->second[2];
                 vectorProduct[2] = i->second[0] * j->second[1] - i->second[1] * j->second[0];
@@ -147,5 +124,92 @@ void Mesh::fillNodeNodeRelation() {
             }
         }
         assert(cell->nodeIDToOppositeNodeID.size() == 12);
+    }
+}
+
+void Mesh::calculateCellVolume() {
+    for (unsigned long i = 0; i < cells.size(); i++) {
+        Cell *cell = &cells[i];
+        Node *node1 = &nodes[cell->cornerNodeIDs[0]];
+        Node *node2 = &nodes[cell->cornerNodeIDs[1]];
+        Node *node3 = &nodes[cell->cornerNodeIDs[2]];
+        Node *node4 = &nodes[cell->cornerNodeIDs[3]];
+
+        Eigen::Vector3d vector12 = node2->coords - node1->coords;
+        Eigen::Vector3d vector13 = node3->coords - node1->coords;
+        Eigen::Vector3d vector14 = node4->coords - node1->coords;
+
+        double det = vector12[0] * vector13[1] * vector14[2] +
+                     vector12[2] * vector13[0] * vector14[1] +
+                     vector12[2] * vector13[1] * vector14[0] -
+                     vector12[0] * vector13[2] * vector14[1] -
+                     vector12[1] * vector13[0] * vector14[3];
+        cell->volume = det / 6;
+    }
+}
+
+void Mesh::calculateFaceSquare() {
+    for (unsigned long i = 0; i < faces.size(); i++) {
+        Face *face = &faces[i];
+        Node *node1 = &nodes[face->cornerNodeIDs[0]];
+        Node *node2 = &nodes[face->cornerNodeIDs[1]];
+        Node *node3 = &nodes[face->cornerNodeIDs[2]];
+
+        Eigen::Vector3d vector12 = node2->coords - node1->coords;
+        Eigen::Vector3d vector13 = node3->coords - node1->coords;
+
+        Eigen::Vector3d vectorProduct;
+        vectorProduct[0] = vector12[1] * vector13[2] - vector12[2] * vector13[1];
+        vectorProduct[1] = vector12[2] * vector13[0] - vector12[0] * vector13[2];
+        vectorProduct[2] = vector12[0] * vector13[1] - vector12[1] * vector13[0];
+
+        face->square = (vectorProduct[0] *  vectorProduct[0] + 
+                        vectorProduct[1] *  vectorProduct[1] +
+                        vectorProduct[2] *  vectorProduct[2]) / 2;
+    }
+}
+
+void Mesh::calculateFaceNormal() {
+    for (unsigned long i = 0; i < faces.size(); i++) {
+        Face *face = &faces[i];
+        Node *node1 = &nodes[face->cornerNodeIDs[0]];
+        Node *node2 = &nodes[face->cornerNodeIDs[1]];
+        Node *node3 = &nodes[face->cornerNodeIDs[2]];
+
+        double b1 = node2->coords[0] - node1->coords[0];
+        double b2 = node2->coords[1] - node1->coords[1];
+        double b3 = node2->coords[2] - node1->coords[2];
+        double c1 = node3->coords[0] - node1->coords[0];
+        double c2 = node3->coords[1] - node1->coords[1];
+        double c3 = node3->coords[2] - node1->coords[2];
+
+        // A * x + B * y + C * z + D = 0
+        double A = b2 * c3 - b3 * c2;
+        double B = b3 * c1 - b1 * c3;
+        double C = b1 * c2 - b2 * c1;
+        double D = -(A+B+C);
+
+        double normalCoef = std::sqrt(A * A + B * B + C * C);
+        face->normal[0] = A / normalCoef;
+        face->normal[1] = B / normalCoef;
+        face->normal[2] = C / normalCoef;
+
+        Eigen::Vector3d proxy(3, 0);
+        proxy[0] = node1->coords[0] + A;
+        proxy[1] = node1->coords[1] + B;
+        proxy[2] = node1->coords[2] + C;
+        bool isProxyAbove = (A * proxy[0] + B * proxy[1] + C * proxy[2] + D) > 0;
+
+        for (long cellID : face->cellIDs) {
+            Cell *cell = &cells[cellID];
+            Eigen::Vector3d coords = nodes[cell->centerNodeID].coords;
+
+            bool isCenterAbove = (A * coords[0] + B * coords[1] + C * coords[2] + D) > 0;
+            if (isProxyAbove && isCenterAbove) {
+                cell->faceToNormalDir[i] = 1;
+            } else {
+                cell->faceToNormalDir[i] = -1;
+            }
+        }
     }
 }

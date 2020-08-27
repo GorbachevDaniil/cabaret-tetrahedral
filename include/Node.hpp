@@ -4,6 +4,8 @@
 #include <set>
 #include <vector>
 
+#include <Eigen/Dense>
+
 class Mesh;
 
 class Node {
@@ -14,10 +16,10 @@ class Node {
     bool boundNode;
     bool cellCenterNode;
 
-    std::vector<double> coords;
+    Eigen::Vector3d coords;
 
     Node(long ID, double x, double y, double z, bool boundNode, bool cellCenterNode);
-    Node(long ID, std::vector<double> coords, bool boundNode, bool cellCenterNode);
+    Node(long ID, Eigen::Vector3d coords, bool boundNode, bool cellCenterNode);
 };
 
 #endif
