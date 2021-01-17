@@ -1,6 +1,5 @@
 #include "TransferSolver.hpp"
 
-#include <armadillo>
 #include <cassert>
 #include <iomanip>
 #include <limits>

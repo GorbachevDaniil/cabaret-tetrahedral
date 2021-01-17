@@ -9,7 +9,6 @@ BIN_DIR			= bin
 BUILD_DIR		= build
 TEST_DIR		= test
 OUTPUT_DIR		= $(BIN_DIR)/output
-GTEST_DIR 		= $(LIB_DIR)/googletest
 
 CXX       		= g++
 CXXFLAGS  		= -g -std=c++11 -Wall -Wextra
@@ -26,19 +25,6 @@ OBJECTS_NO_MAIN	= $(SOURCES_NO_MAIN:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 TEST_SOURCES	= $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJECTS	= $(TEST_SOURCES:$(TEST_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-$(BUILD_DIR)/gtest-all.o: $(GTEST_DIR)/src/gtest-all.cc
-	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR)/include -I $(GTEST_DIR) \
-            -c $(GTEST_DIR)/src/gtest-all.cc \
-            -o $(BUILD_DIR)/gtest-all.o
-
-$(BUILD_DIR)/gtest_main.o: $(GTEST_DIR)/src/gtest_main.cc
-	$(CXX) $(CXXFLAGS) -I $(GTEST_DIR)/include -I $(GTEST_DIR) \
-            -c $(GTEST_DIR)/src/gtest_main.cc \
-            -o $(BUILD_DIR)/gtest_main.o
-
-$(BUILD_DIR)/gtest_main.a: $(BUILD_DIR)/gtest-all.o $(BUILD_DIR)/gtest_main.o
-	$(AR) $(ARFLAGS) $@ $^
-
 $(BIN_DIR)/$(TARGET): $(OBJECTS)
 	@$(LINKER) $@ $(LFLAGS) -I $(INCLUDE_DIR) $(OBJECTS)
 	@echo "Target linked successfully!"
@@ -49,14 +35,14 @@ $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 	@$(CXX) $(CXXFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
 	@echo "Compiled "$<" successfully!"
 
-$(BIN_DIR)/$(TEST_TARGET): $(TEST_OBJECTS) $(OBJECTS_NO_MAIN) $(BUILD_DIR)/gtest_main.a
-	@$(LINKER) $@ $(LFLAGS) -I $(INCLUDE_DIR) -I $(GTEST_DIR)/include $(BUILD_DIR)/gtest_main.a $(TEST_OBJECTS) $(OBJECTS_NO_MAIN)
+$(BIN_DIR)/$(TEST_TARGET): $(TEST_OBJECTS) $(OBJECTS_NO_MAIN)
+	@$(LINKER) $@ $(LFLAGS) -I $(INCLUDE_DIR) -I $(TEST_DIR)/catch.hpp $(TEST_OBJECTS) $(OBJECTS_NO_MAIN)
 	@echo "Test target linked successfully!"
 
 $(TEST_OBJECTS): $(BUILD_DIR)/%.o : $(TEST_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
 	@mkdir -p $(BIN_DIR)
-	@$(CXX) $(CXXFLAGS) -I $(INCLUDE_DIR) -I $(GTEST_DIR)/include -c $< -o $@
+	@$(CXX) $(CXXFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
 	@echo "Compiled "$<" successfully!"	
 
 target: $(BIN_DIR)/$(TARGET)
