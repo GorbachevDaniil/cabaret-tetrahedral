@@ -6,7 +6,6 @@
 #include <iostream>
 
 int TetGenParser::LoadNodes(Mesh *mesh, std::string filename) {
-    std::string line;
     std::ifstream nodeFile(filename);
 
     if (!nodeFile) {
@@ -20,9 +19,9 @@ int TetGenParser::LoadNodes(Mesh *mesh, std::string filename) {
     int boundaryMarker = 0;
     nodeFile >> numberOfNodes >> dimension >> numberOfAttributes >> boundaryMarker;
 
-    int x = 0;
-    int y = 0;
-    int z = 0;
+    double x = 0;
+    double y = 0;
+    double z = 0;
     long nodeID = 0;
     while (nodeID < numberOfNodes - 1) {
         nodeFile >> nodeID >> x >> y >> z;
@@ -34,7 +33,6 @@ int TetGenParser::LoadNodes(Mesh *mesh, std::string filename) {
 }
 
 int TetGenParser::LoadFaces(Mesh *mesh, std::string filename) {
-    std::string line;
     std::ifstream faceFile(filename);
 
     if (!faceFile) {
@@ -65,7 +63,6 @@ int TetGenParser::LoadFaces(Mesh *mesh, std::string filename) {
 }
 
 int TetGenParser::LoadCells(Mesh *mesh, std::string filename) {
-    std::string line;
     std::ifstream cellFile(filename);
 
     if (!cellFile) {

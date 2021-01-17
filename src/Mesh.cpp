@@ -4,8 +4,8 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include <string>
 #include <algorithm>
-#include <limits>
 #include <cmath>
 #include <cassert>
 
@@ -76,21 +76,57 @@ void Mesh::createFaceInnerNodes() {
 }
 
 void Mesh::fillCellFaceRelation() {
-    std::map<long, std::set<long>> cellIDToNodeIDs;
+    std::map<std::string, std::vector<long>> nodeIDsToCellID;
     for (Cell cell : cells) {
-        cellIDToNodeIDs[cell.ID] = std::set<long>(cell.cornerNodeIDs.begin(), 
-                                                  cell.cornerNodeIDs.end());
+        std::vector<long> cornerNodeIDs = cell.cornerNodeIDs;
+        std::sort(cornerNodeIDs.begin(), cornerNodeIDs.end());
+        
+        std::string comb1 = std::to_string(cornerNodeIDs[0]) +
+                            std::to_string(cornerNodeIDs[1]) +
+                            std::to_string(cornerNodeIDs[2]);
+        if (nodeIDsToCellID.find(comb1) == nodeIDsToCellID.end()) {
+            nodeIDsToCellID[comb1] = std::vector<long>();
+        }
+        nodeIDsToCellID[comb1].push_back(cell.ID);
+
+        std::string comb2 = std::to_string(cornerNodeIDs[1]) +
+                            std::to_string(cornerNodeIDs[2]) +
+                            std::to_string(cornerNodeIDs[3]);
+        if (nodeIDsToCellID.find(comb2) == nodeIDsToCellID.end()) {
+            nodeIDsToCellID[comb2] = std::vector<long>();
+        }
+        nodeIDsToCellID[comb2].push_back(cell.ID);
+
+        std::string comb3 = std::to_string(cornerNodeIDs[0]) +
+                            std::to_string(cornerNodeIDs[1]) +
+                            std::to_string(cornerNodeIDs[3]);
+        if (nodeIDsToCellID.find(comb3) == nodeIDsToCellID.end()) {
+            nodeIDsToCellID[comb3] = std::vector<long>();
+        }
+        nodeIDsToCellID[comb3].push_back(cell.ID);
+
+        std::string comb4 = std::to_string(cornerNodeIDs[0]) +
+                            std::to_string(cornerNodeIDs[2]) +
+                            std::to_string(cornerNodeIDs[3]);
+        if (nodeIDsToCellID.find(comb4) == nodeIDsToCellID.end()) {
+            nodeIDsToCellID[comb4] = std::vector<long>();
+        }
+        nodeIDsToCellID[comb4].push_back(cell.ID);
     }
     for (unsigned long i = 0; i < faces.size(); i++) {
         Face *face = &faces[i];
-        std::set<long> faceNodeIDs(face->cornerNodeIDs.begin(), face->cornerNodeIDs.end());
-        for (auto it = cellIDToNodeIDs.cbegin(); it != cellIDToNodeIDs.cend(); ++it) {
-            if (std::includes(it->second.begin(), it->second.end(), 
-                              faceNodeIDs.begin(), faceNodeIDs.end())) {
-                face->cellIDs.push_back(it->first);
-                cells[it->first].faceIDs.push_back(face->ID);
-            }
+        std::vector<long> cornerNodeIDs = face->cornerNodeIDs;
+        std::sort(cornerNodeIDs.begin(), cornerNodeIDs.end());
+        std::string comb = std::to_string(cornerNodeIDs[0]) +
+                           std::to_string(cornerNodeIDs[1]) +
+                           std::to_string(cornerNodeIDs[2]);
+        
+        std::vector<long> cellIDs = nodeIDsToCellID[comb];
+        for (long cellID : cellIDs) {
+            face->cellIDs.push_back(cellID);
+            cells[cellID].faceIDs.push_back(face->ID);
         }
+        assert(face->cellIDs.size() == 1 || face->cellIDs.size() == 2);
     }
 }
 
@@ -116,9 +152,7 @@ void Mesh::fillNodeNodeRelation() {
                 vectorProduct[0] = i->second[1] * j->second[2] - i->second[2] * j->second[1];
                 vectorProduct[1] = i->second[2] * j->second[0] - i->second[0] * j->second[2];
                 vectorProduct[2] = i->second[0] * j->second[1] - i->second[1] * j->second[0];
-                if ((std::abs(vectorProduct[0]) <= std::numeric_limits<double>::min()) &&
-                    (std::abs(vectorProduct[1]) <= std::numeric_limits<double>::min()) &&
-                    (std::abs(vectorProduct[2]) <= std::numeric_limits<double>::min())) {
+                if (std::abs(vectorProduct.norm()) <= 10e-15) {
                     cell->nodeIDToOppositeNodeID[i->first] = j->first;
                 }
             }
@@ -141,10 +175,11 @@ void Mesh::calculateCellVolume() {
 
         double det = vector12[0] * vector13[1] * vector14[2] +
                      vector12[2] * vector13[0] * vector14[1] +
+                     vector12[1] * vector13[2] * vector14[0] -
                      vector12[2] * vector13[1] * vector14[0] -
                      vector12[0] * vector13[2] * vector14[1] -
-                     vector12[1] * vector13[0] * vector14[3];
-        cell->volume = det / 6;
+                     vector12[1] * vector13[0] * vector14[2];
+        cell->volume = abs(det) / 6;
     }
 }
 
@@ -187,14 +222,14 @@ void Mesh::calculateFaceNormal() {
         double A = b2 * c3 - b3 * c2;
         double B = b3 * c1 - b1 * c3;
         double C = b1 * c2 - b2 * c1;
-        double D = -(A+B+C);
+        double D = -(node1->coords[0] * A + node1->coords[1] * B + node1->coords[2] * C);
 
-        double normalCoef = std::sqrt(A * A + B * B + C * C);
-        face->normal[0] = A / normalCoef;
-        face->normal[1] = B / normalCoef;
-        face->normal[2] = C / normalCoef;
+        face->normal[0] = A;
+        face->normal[1] = B;
+        face->normal[2] = C;
+        face->normal.normalize();
 
-        Eigen::Vector3d proxy(3, 0);
+        Eigen::Vector3d proxy;
         proxy[0] = node1->coords[0] + A;
         proxy[1] = node1->coords[1] + B;
         proxy[2] = node1->coords[2] + C;
@@ -205,10 +240,10 @@ void Mesh::calculateFaceNormal() {
             Eigen::Vector3d coords = nodes[cell->centerNodeID].coords;
 
             bool isCenterAbove = (A * coords[0] + B * coords[1] + C * coords[2] + D) > 0;
-            if (isProxyAbove && isCenterAbove) {
-                cell->faceToNormalDir[i] = 1;
-            } else {
+            if (isProxyAbove == isCenterAbove) {
                 cell->faceToNormalDir[i] = -1;
+            } else {
+                cell->faceToNormalDir[i] = 1;
             }
         }
     }

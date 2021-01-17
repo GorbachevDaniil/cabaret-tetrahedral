@@ -26,7 +26,9 @@ void TransferInitializer::initialize(Mesh &mesh) {
         double y = node->coords[1];
         double z = node->coords[2];
 
-        if (x > 0.5) {
+        if ((x > 0.2) & (x < 0.4) & 
+            (y > 0.4) & (y < 0.6) & 
+            (z > 0.4) & (z < 0.6)) {
             mesh.s0[i][0] = 1;
         } else {
             mesh.s0[i][0] = 0;

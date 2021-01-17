@@ -10,7 +10,7 @@ class AbstractOutput {
     bool writeFlux;
 
    public:
-    virtual void writeParaview(Mesh *mesh, double time, int step) = 0;
+    virtual void writeCSV(Mesh *mesh, double time, int step) = 0;
 };
 
 #endif
